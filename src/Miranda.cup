@@ -1,0 +1,212 @@
+import java_cup.runtime.*;
+import java.util.HashMap;
+import java.util.ArrayList;
+
+action code {:
+    HashMap<String, String> symbolTable = new HashMap();
+    HashMap<String, ArrayList<String>> functionTable = new HashMap();
+    ArrayList<String> arguments = new ArrayList<>();
+    ArrayList<String> executionArguments = new ArrayList<>();
+    String temp;
+
+    public boolean isStringNat(String s) {
+            try {
+                Integer.parseInt(s);
+                return true;
+            } catch (NumberFormatException ex) {
+                return false;
+            }
+        }
+        public boolean isStringFloat(String s) {
+            try {
+                Float.parseFloat(s);
+                return true;
+            } catch (NumberFormatException ex) {
+                return false;
+            }
+        }
+:}
+
+
+terminal NAT, STRING, FLOAT, NAT_KEYWORD, STRING_KEYWORD, FLOAT_KEYWORD;
+terminal COMMA, LPAREN, RPAREN;
+terminal IF, OTHERWISE; // if_then_statement, if_then_else_statement
+terminal LT, GT, LTEQ, GTEQ, EQ; // relational_expression
+terminal ASSIGN_BODY_METHOD;
+terminal ARROWS;
+terminal MINUS;
+terminal IDENTIFIER,identifier;
+
+non terminal goal;
+non terminal method_declaration, method_header, method_body, method_execution;
+non terminal formal_parameter_list_body, formal_parameter_list_header, execution_parameter_list_body;
+non terminal additive_expression;
+non terminal initial_condition;
+non terminal return_statement, recursive_call;
+non terminal condition;
+non terminal if_then_statement;
+non terminal if_then_else_statement;
+non terminal parameter_header, parameter_header_return, parameter_body, statment;
+non terminal relational_expression;
+non terminal assignment, value, value_function;
+
+
+
+
+start with goal;
+
+
+
+goal ::=
+		method_declaration method_execution
+	|	assignment
+	;
+
+assignment ::=
+		identifier:id EQ value:n assignment {:
+            String type;
+            String idName = id.toString();
+            String value = n.toString();
+            if (isStringNat(value)){
+                type =  "nat";
+            }else if (isStringFloat(value)){
+                type =  "float";
+            }else {
+                type =  "string";
+            }
+
+            if (!symbolTable.containsKey(idName)){
+                if (type.equals("nat")){
+                    symbolTable.put(idName, "nat");
+                }else if (type.equals("float")){
+                     symbolTable.put(idName, "float");
+                }else {
+                    symbolTable.put(idName, "string");
+                }
+            }else {
+                if (!symbolTable.get(idName).equals(type)){
+                    System.err.println("You can't assign a " + symbolTable.get(id) + " value to a " + type + " Variable!");
+                    System.exit(1);
+                }
+            }
+		  :}
+	|
+	;
+
+value ::=
+		NAT:n    {: RESULT = n; :}
+	|	FLOAT:n  {: RESULT = n; :}
+	|	STRING:n {: RESULT = n; :}
+	;
+
+method_declaration ::=
+		method_header method_body
+	;
+
+method_header ::=
+		IDENTIFIER:idFunction ASSIGN_BODY_METHOD LPAREN formal_parameter_list_header RPAREN ARROWS parameter_header_return {:
+
+        temp = idFunction.toString();
+        functionTable.put(temp , arguments);
+		:}
+	;
+formal_parameter_list_header ::=
+		parameter_header COMMA formal_parameter_list_header
+	|	parameter_header
+	;
+
+formal_parameter_list_body ::=
+		parameter_body COMMA formal_parameter_list_body
+	|	parameter_body
+	;
+parameter_header ::=
+		NAT_KEYWORD    {: arguments.add("nat"); :}
+	|	STRING_KEYWORD {: arguments.add("string"); :}
+	|	FLOAT_KEYWORD  {: arguments.add("float"); :}
+	;
+parameter_header_return ::=
+		NAT_KEYWORD
+	|	STRING_KEYWORD
+	|	FLOAT_KEYWORD
+	;
+parameter_body ::=
+		identifier
+	|	NAT
+	|	FLOAT
+	|	STRING
+	|	additive_expression
+	;
+additive_expression ::=
+		identifier MINUS NAT
+	;
+
+method_body ::=
+		initial_condition
+	;
+initial_condition ::=
+		IDENTIFIER LPAREN formal_parameter_list_body RPAREN EQ statment
+	;
+statment ::=
+		if_then_statement
+	|	if_then_else_statement
+	;
+if_then_statement ::=
+		return_statement recursive_call COMMA IF condition
+	;
+if_then_else_statement ::=
+		return_statement recursive_call COMMA IF condition EQ return_statement COMMA OTHERWISE
+	;
+condition ::=
+		LPAREN identifier relational_expression identifier RPAREN
+	|	identifier relational_expression identifier
+	;
+relational_expression ::=
+		EQ
+	|	LT
+	|	GT
+	|	LTEQ
+	|	GTEQ
+	;
+return_statement ::=
+		STRING
+	|	NAT
+	|	FLOAT
+	;
+recursive_call ::=
+		IDENTIFIER LPAREN formal_parameter_list_body RPAREN
+	;
+
+method_execution ::=
+		IDENTIFIER:idFunction LPAREN execution_parameter_list_body RPAREN {:
+
+		    temp = idFunction.toString();
+		    ArrayList<String> tempArguments = functionTable.get(temp);
+
+		    if (!functionTable.containsKey(temp)){
+                System.err.println("Function " + temp + " have not been declared!");
+                System.exit(100);
+            } else if (tempArguments.size() != executionArguments.size()){
+                System.err.println("For method " + temp + ", number of arguments does not match!");
+                System.exit(101);
+            }
+
+            for (int i=0; i<executionArguments.size(); i++){
+                if (!executionArguments.get(i).equals(tempArguments.get(i))){
+                    System.err.println("The Type of arguments \"" + temp + "\" and it's call does not match!");
+                    System.exit(102);
+                }
+            }
+		:}
+	|
+	;
+
+execution_parameter_list_body ::=
+		value_function COMMA execution_parameter_list_body
+	|	value_function
+	;
+
+value_function ::=
+		NAT    {: executionArguments.add("nat"); :}
+	|	FLOAT  {: executionArguments.add("float"); :}
+	|	STRING {: executionArguments.add("String"); :}
+	;
